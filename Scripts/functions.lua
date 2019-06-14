@@ -63,4 +63,13 @@ function sm.virtualButtons.client_onInteract(parentInstance, x, y) -- x, y in bl
 		end
 	end
 end
+function sm.virtualButtons.client_getButtonPosition(parentInstance, x, y)
+	for _, virtualButton in pairs(parentInstance.__virtualButtons or {}) do
+		if math.abs(x-virtualButton.x) < virtualButton.width and
+			math.abs(y-virtualButton.y) < virtualButton.height then
+			return virtualButton.x, virtualButton.y
+		end
+	end
+	return nil, nil
+end
 

@@ -19,8 +19,8 @@ function Keypad.server_onRefresh( self )
 	self.interactable.active = false
 end
 
-
 function Keypad.server_onFixedUpdate( self, dt )
+	if not sm.exists(self.interactable) then return end
 	if self.interactable.active then
 		if self.activeTime <= 1 then -- when active and activeTime is only 1 tick it'll insta go inactive, thus it stayed active for 1 tick
 			self.interactable.active = false
@@ -36,6 +36,7 @@ end
 
 function Keypad.server_changePower( self, num )
 	self.interactable.power = num
+	sm.interactable.setValue(self.interactable, num)
 	self.network:sendToClients("client_playSound","Button on")
 	self.buttonPress = true
 end
@@ -73,20 +74,57 @@ function Keypad.client_onCreate(self)
 		--[[e]] { x =  0.75, y = -0.50, width = 0.25, height = 0.50, callback = function(self, obj) obj.enter = true end},
 	}
 	sm.virtualButtons.client_configure(self, virtualButtons)
+	self.effect = sm.effect.createEffect( "RadarDot", self.interactable)
+	self.effect2 = sm.effect.createEffect( "RadarDot", self.interactable)
+end
+
+function Keypad.client_onFixedUpdate(self)
+	if not sm.exists(self.interactable) then return end
+	local hit, hitResult = sm.localPlayer.getRaycast(10)
+	if not hit then
+		self:client_stopEffect()
+		return
+	end
+	
+	local dotX, dotY = self:getLocalXY(hitResult.pointWorld)
+	local buttonX, buttonY = sm.virtualButtons.client_getButtonPosition(self, dotX, dotY)
+	
+	if not buttonX then 
+		self:client_stopEffect()
+		return 
+	end
+	
+	self.effect:setOffsetPosition(sm.vec3.new(buttonX/4, buttonY/4, 0))
+	self.effect2:setOffsetPosition(sm.vec3.new(buttonX/4, buttonY/4, 0))
+	if not self.effect:isPlaying() then
+		self.effect:start()
+		self.effect2:start()
+	end
+end
+
+function Keypad.client_stopEffect(self)
+	self.effect:setOffsetPosition(sm.vec3.new(100000,0,0))
+	self.effect2:setOffsetPosition(sm.vec3.new(100000,0,0))
+	if self.effect:isPlaying() then
+		self.effect:stop()
+		self.effect2:stop()
+	end
+end
+
+function Keypad.getLocalXY(self, vec)
+	local hitVec = vec - self.shape.worldPosition
+	local localX = self.shape.right
+	local localY = self.shape.at
+	dotX = hitVec:dot(localX) * 4
+	dotY = hitVec:dot(localY) * 4
+	return dotX, dotY
 end
 
 -- Called on pressing [E]
 function Keypad.client_onInteract( self ) 
 	local hit, hitResult = sm.localPlayer.getRaycast(10) -- world point the vector hit
 	if not hit then return end
-	local worldPos = self.shape.worldPosition -- world point of block center
-	local hitPos = hitResult.pointWorld
-	local localHitVec = hitPos - worldPos -- vector of hit relative to block
-	local localX = self.shape.right
-	local localY = self.shape.at
-	local localZ = self.shape.up
-	dotX = localHitVec:dot(localX) * 4
-	dotY = localHitVec:dot(localY) * 4
+	local dotX, dotY = self:getLocalXY(hitResult.pointWorld)
 	
 	self.number = (self.enter and "0" or self.number)
 	self.enter = false
@@ -99,5 +137,9 @@ function Keypad.client_onInteract( self )
 		--print('notify server, number = ',tonumber(self.number))
 		self.network:sendToServer("server_changePower", tonumber(self.number))
 	end
+end
+
+function Keypad.client_onDestroy(self)
+	self:client_stopEffect()
 end
 
