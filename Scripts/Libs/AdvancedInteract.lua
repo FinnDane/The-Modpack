@@ -1,4 +1,5 @@
 -- Libs/AdvancedInteract.lua --
+-- This library was made by Nick
 
 print("Libs/AdvancedInteract.lua reloaded")
 
@@ -72,3 +73,6 @@ function sm.advancedInteract.create( parentClass )
     
     return object
 end
+
+--TODO: Make it not interactable if not looking at button
+--TODO: Highlight when buttons are in range, different color when looking at a button (onHover)

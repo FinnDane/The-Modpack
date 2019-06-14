@@ -1,5 +1,7 @@
 --[[ Keypad block ]]--
+-- This version was made by Nick
 
+dofile("functions.lua")
 dofile("Libs/AdvancedInteract.lua")
 
 Keypad = class()
@@ -11,7 +13,6 @@ Keypad.colorNormal = sm.color.new( 0x00971dff )
 Keypad.colorHighlight = sm.color.new( 0x00b822ff )
 
 function Keypad.client_onRefresh( self )
-    --sm.advancedInteract = nil
     self:client_onCreate()
 end
 
@@ -35,31 +36,129 @@ function Keypad.client_onCreate( self )
 end
 
 function Keypad.client_onInteract( self )
-	--local camPos = sm.camera.getPosition()
-	--local camDir = sm.camera.getDirection()
-	--local R1,R2 = sm.physics.raycast((camPos + camDir), (camPos + camDir * 10))
-    
     self.advInteract:onInteract()
 end
 
+
+-- Client keystrokes
 function Keypad.client_onKeypadNumber( self, btn )
-    print("client_onKeypad", btn.name)
+    self.network:sendToServer("server_onKeypadNumber", btn)
 end
 
 function Keypad.client_onKeypadDot( self, btn )
-    print("client_onKeypad", btn.name)
+    self.network:sendToServer("server_onKeypadDot", btn)
 end
 
 function Keypad.client_onKeypadMinus( self, btn )
-    print("client_onKeypad", btn.name)
+    self.network:sendToServer("server_onKeypadMinus", btn)
 end
 
 function Keypad.client_onKeypadEnter( self, btn )
-    print("client_onKeypad", btn.name)
+    self.network:sendToServer("server_onKeypadEnter", btn)
 end
 
 function Keypad.client_onKeypadClear( self, btn )
-    print("client_onKeypad", btn.name)
+    self.network:sendToServer("server_onKeypadClear", btn)
 end
 
---TODO: Make it not interactable if not looking at button
+
+
+
+-- Test setup (remove when done testing)
+--function Keypad.client_onUpdate( self, dt )
+--    sm.gui.displayAlertText(self.numberString, 1)
+--end
+
+
+
+
+
+
+function Keypad.server_onRefresh( self )
+    self:server_onCreate()
+end
+
+function Keypad.server_onCreate( self )
+    self.numberString = "0"
+    self.ticksActive = 5
+    self.lastTrigger = nil
+end
+
+function Keypad.server_onFixedUpdate( self, timeStep )
+    self:server_updateActive()
+end
+
+function Keypad.client_canInteract(self)
+    if (self.shape.worldPosition - sm.localPlayer.getPosition()):length2() > 4 then return false end
+    
+    local parent = self.interactable:getSingleParent()
+    if parent and parent.active == false then
+        return false
+    end
+    
+    return true
+end
+
+
+
+-- Server keystrokes
+function Keypad.server_onKeypadNumber( self, btn )
+    if self.lastTrigger then
+        self.lastTrigger = nil
+        self.numberString = "0"
+    end
+    
+    self.numberString = (self.numberString == "0" and "" or self.numberString == "-0" and "-" or self.numberString) .. btn.name
+    self:server_updatePower()
+end
+
+function Keypad.server_onKeypadDot( self, btn )
+    if self.lastTrigger then
+        self.lastTrigger = nil
+        self.numberString = "0"
+    end
+    
+    self.numberString = self.numberString:find("%.") and self.numberString or self.numberString .. "."
+    self:server_updatePower()
+end
+
+function Keypad.server_onKeypadMinus( self, btn )
+    if self.lastTrigger then
+        self.lastTrigger = nil
+        self.numberString = "0"
+    end
+    
+    self.numberString = self.numberString:sub(1, 1) == "-" and self.numberString:sub(2) or ("-" .. self.numberString)
+    self:server_updatePower()
+end
+
+function Keypad.server_onKeypadEnter( self, btn )
+    self.lastTrigger = sm.game.getCurrentTick()
+    self:server_updateActive()
+    self:server_updatePower()
+end
+
+function Keypad.server_onKeypadClear( self, btn )
+    self.numberString = "0"
+    self:server_updatePower()
+end
+
+function Keypad.server_updatePower( self )
+    local number = tonumber(self.numberString)
+    
+    local power = number
+    if math.abs(power) >= 3.3*10^38 then 
+        if power < 0 then power = -3.3*10^38 else power = 3.3*10^38 end --Infinity detected
+    end
+    self.interactable.power = power
+    sm.interactable.setValue(self.interactable, number)
+end
+
+function Keypad.server_updateActive( self )
+    self.interactable.active = self.lastTrigger and (sm.game.getCurrentTick() < self.lastTrigger + self.ticksActive) or false
+end
+
+
+
+
+
