@@ -49,7 +49,11 @@ function Keypad.server_onButtonPress(self, buttonName)
 		self[buttonName](self)
 	end
 	
-	self.interactable.power = tonumber(self.strNumber)
+	local power = tonumber(self.strNumber)
+	if math.abs(power) >= 3.3*10^38 then 
+		if power < 0 then power = -3.3*10^38 else power = 3.3*10^38 end  
+	end
+	self.interactable.power = power
 	sm.interactable.setValue(self.interactable, tonumber(self.strNumber))
 	
 	self.buttonPress = true
@@ -136,7 +140,7 @@ function Keypad.client_onInteract( self )
 end
 
 function Keypad.client_canInteract(self)
-	return (self.shape.worldPosition - sm.localPlayer.getPosition()):length()<2
+	return (self.shape.worldPosition - sm.localPlayer.getPosition()):length2() < 4
 end
 
 function Keypad.client_onDestroy(self)
