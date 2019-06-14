@@ -1,162 +1,103 @@
 --[[ Keypad block ]]--
 Keypad = class()
-Keypad.maxParentCount = 0 -- Amount of inputs
-Keypad.maxChildCount = -1 -- Amount of outputs
-Keypad.connectionInput = sm.interactable.connectionType.none -- Type of input
-Keypad.connectionOutput = sm.interactable.connectionType.power + sm.interactable.connectionType.logic -- Type of output
+Keypad.maxParentCount = 0
+Keypad.maxChildCount = -1
+Keypad.connectionInput = sm.interactable.connectionType.none
+Keypad.connectionOutput = sm.interactable.connectionType.power + sm.interactable.connectionType.logic
 Keypad.colorNormal = sm.color.new( 0x00971dff )
 Keypad.colorHighlight = sm.color.new( 0x00b822ff )
 
-Keypad.newPower = 0
-Keypad.power = 0
-Keypad.decimal = false
-Keypad.deciPlace = 0.1
-Keypad.activate = false
-Keypad.prevActive = false
-Keypad.pulseDelay = 0
-Keypad.lastEnter = false
+dofile "functions.lua" 
 
 -- Called on creation
-function Keypad.server_onCreate( self ) 
-	self.interactable:setPower(self.power)
-	self.interactable:setActive(false)
+function Keypad.server_onCreate( self )
+	self.activeTime = 0
 end
 function Keypad.server_onRefresh( self )
     self:server_onCreate()
+	self.interactable.power = 0
+	self.interactable.active = false
 end
 
--- Called every tick
-function Keypad.server_onFixedUpdate( self, deltaTime )
-	if self.activate == true then
-		self.activate = false
-		self.interactable:setActive(true)
-		self.prevActive = true
-	elseif self.prevActive == true then
-		if self.pulseDelay > 0 then
-			self.pulseDelay = self.pulseDelay - 1
+
+function Keypad.server_onFixedUpdate( self, dt )
+	if self.interactable.active then
+		if self.activeTime <= 1 then -- when active and activeTime is only 1 tick it'll insta go inactive, thus it stayed active for 1 tick
+			self.interactable.active = false
 		else
-			self.prevActive = false
-			self.interactable:setActive(false)
+			self.activeTime = self.activeTime - 1
 		end
+	end
+	if self.buttonPress then
+		self.buttonPress = false
+		self.network:sendToClients("client_playSound","Button off")
 	end
 end
 
 function Keypad.server_changePower( self, num )
-	self.power = num
-	self.interactable:setPower(num)
+	self.interactable.power = num
+	self.network:sendToClients("client_playSound","Button on")
+	self.buttonPress = true
 end
 
 function Keypad.server_changeActive( self )
-	self.activate = true
-	self.pulseDelay = 0
+	self.activeTime = 1 --ticks
+	self.interactable.active = true
+	self.network:sendToClients("client_playSound","Button on")
+	self.buttonPress = true
+end
+
+
+--- client ---
+
+function Keypad.client_playSound(self, soundName)
+	sm.audio.play(soundName, self.shape.worldPosition)
+end
+
+function Keypad.client_onCreate(self)
+	self.number = "0"
+	local virtualButtons = {
+		--[[1]] { x = -0.75, y = -0.25, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = obj.number.."1" end},
+		--[[2]] { x = -0.25, y = -0.25, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = obj.number.."2" end},
+		--[[3]] { x =  0.25, y = -0.25, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = obj.number.."3" end},
+		--[[4]] { x = -0.75, y =  0.25, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = obj.number.."4" end},
+		--[[5]] { x = -0.25, y =  0.25, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = obj.number.."5" end},
+		--[[6]] { x =  0.25, y =  0.25, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = obj.number.."6" end},
+		--[[7]] { x = -0.75, y =  0.75, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = obj.number.."7" end},
+		--[[8]] { x = -0.25, y =  0.75, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = obj.number.."8" end},
+		--[[9]] { x =  0.25, y =  0.75, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = obj.number.."9" end},
+		--[[0]] { x = -0.75, y = -0.75, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = obj.number.."0" end},
+		--[[.]] { x = -0.25, y = -0.75, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = obj.number.."." end},
+		--[[-]] { x =  0.25, y = -0.75, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = (obj.number:sub(1,1) == '-' and obj.number:sub(2) or '-'..obj.number) end},
+		--[[c]] { x =  0.75, y =  0.50, width = 0.25, height = 0.50, callback = function(self, obj) obj.number = "0" end}, 
+		--[[e]] { x =  0.75, y = -0.50, width = 0.25, height = 0.50, callback = function(self, obj) obj.enter = true end},
+	}
+	sm.virtualButtons.client_configure(self, virtualButtons)
 end
 
 -- Called on pressing [E]
 function Keypad.client_onInteract( self ) 
-	local camPos = sm.camera.getPosition()
-	local camDir = sm.camera.getDirection()
-	local R1,R2 = sm.physics.raycast((camPos + camDir), (camPos + camDir * 10))
-	local hitPos = R2.pointWorld -- world point the vector hit
-	local worldPos = self.shape:getWorldPosition() -- world point of block center
+	local hit, hitResult = sm.localPlayer.getRaycast(10) -- world point the vector hit
+	if not hit then return end
+	local worldPos = self.shape.worldPosition -- world point of block center
+	local hitPos = hitResult.pointWorld
 	local localHitVec = hitPos - worldPos -- vector of hit relative to block
-	local localX = self.shape:getRight()
-	local localY = self.shape:getAt()
-	local localZ = self.shape:getUp()
-	dotX = sm.vec3.dot(localHitVec, localX) * 4
-	dotY = sm.vec3.dot(localHitVec, localY) * 4
-	dotZ = sm.vec3.dot(localHitVec, localZ) * 4
+	local localX = self.shape.right
+	local localY = self.shape.at
+	local localZ = self.shape.up
+	dotX = localHitVec:dot(localX) * 4
+	dotY = localHitVec:dot(localY) * 4
 	
-	--print(localHitVec)
-	--print("Dot X: "..string.format("%.3f",dotX))
-	--print("Dot Y: "..string.format("%.3f",dotY))
-	--print("Dot Z: "..string.format("%.3f",dotZ))
+	self.number = (self.enter and "0" or self.number)
+	self.enter = false
 	
-	-- determine row and colum ranges
-	local row1 = dotY > 0.5
-	local row2 = dotY > 0 and dotY <= 0.5
-	local row3 = dotY <= 0 and dotY > -0.5
-	local row4 = dotY <= -0.5
-	local col1 = dotX < -0.5
-	local col2 = dotX >= -0.5 and dotX < 0
-	local col3 = dotX >= 0 and dotX < 0.5
-	local col4 = dotX >= 0.5
+	sm.virtualButtons.client_onInteract(self, dotX, dotY)
 	
-	-- determine button pressed
-	if row1 and col1 then 
-		--print("7")
-		self:client_keypress(7)
-	elseif row1 and col2 then
-		--print("8")
-		self:client_keypress(8)
-	elseif row1 and col3 then
-		--print("9")
-		self:client_keypress(9)
-	elseif row2 and col1 then
-		--print("4")
-		self:client_keypress(4)
-	elseif row2 and col2 then
-		--print("5")
-		self:client_keypress(5)
-	elseif row2 and col3 then
-		--print("6")
-		self:client_keypress(6)
-	elseif row3 and col1 then
-		--print("1")
-		self:client_keypress(1)
-	elseif row3 and col2 then
-		--print("2")
-		self:client_keypress(2)
-	elseif row3 and col3 then
-		--print("3")
-		self:client_keypress(3)
-	elseif row4 and col1 then
-		--print("0")
-		self:client_keypress(0)
-	elseif row4 and col2 then
-		--print(".")
-		self.decimal = true
-		if self.lastEnter == true then
-			self.lastEnter = false
-			self.newPower = 0
-		self.deciPlace = 0.1
-		end
-	elseif row4 and col3 then
-		--print("-")
-		self.newPower = -self.newPower
-	elseif (row1 or row2 ) and col4 then
-		--print("CLEAR")
-		self.newPower = 0
-		self.decimal = false
-		self.deciPlace = 0.1
-	elseif (row3 or row4) and col4 then
-		--print("ENTER")
-		self.lastEnter = true
+	if self.enter then
 		self.network:sendToServer("server_changeActive")
-	end
-	self.network:sendToServer("server_changePower", self.newPower)
-	sm.audio.play("Button on", sm.shape.getWorldPosition(self.shape))
-	--print("new power: "..self.newPower)
-	--print("-----------------------------------")
-end
-
--- process number buttons
-function Keypad.client_keypress(self, num)
-	if self.lastEnter == true then
-		self.lastEnter = false
-		self.newPower = 0
-		self.decimal = false
-		self.deciPlace = 0.1
-	end
-	if self.decimal == false then
-		if self.newPower == 0 then
-			self.newPower = self.newPower + num
-		else
-			self.newPower = self.newPower * 10 + num
-		end
 	else
-		self.newPower = self.newPower + (num * self.deciPlace)
-		self.deciPlace = self.deciPlace * 0.1
+		--print('notify server, number = ',tonumber(self.number))
+		self.network:sendToServer("server_changePower", tonumber(self.number))
 	end
 end
-
 
