@@ -1,4 +1,4 @@
---[[ Keypad block ]]--
+--[[ Keypad part ]]--
 Keypad = class()
 Keypad.maxParentCount = 0
 Keypad.maxChildCount = -1
@@ -31,24 +31,43 @@ function Keypad.server_onFixedUpdate( self, dt )
 	end
 	if self.buttonPress then
 		self.buttonPress = false
-		self.network:sendToClients("client_playSound","Button off")
+		self.network:sendToClients("client_playSound", "Button off")
 	end
 end
 
-function Keypad.server_changePower( self, num )
-	self.interactable.power = num
-	sm.interactable.setValue(self.interactable, num)
+function Keypad.server_onButtonPress(self, buttonName)
 	self.network:sendToClients("client_playSound","Button on")
 	self.buttonPress = true
+	-- if enter was pressed last buttonpress, reset just before this buttonpress:
+	if self.enter then
+		self.number = "0"
+		self.enter = false
+	end
+	
+	if tonumber(buttonName) then
+		self.number = self.number..buttonName
+	else
+		self[buttonName](self)
+	end
+	
+	self.interactable.power = tonumber(self.number)
+	sm.interactable.setValue(self.interactable, tonumber(self.number))
 end
 
-function Keypad.server_changeActive( self )
+function Keypad.d(self) -- '.'
+	self.number = (self.number:find("%.") and self.number or self.number..".")
+end
+function Keypad.m(self) -- '-'
+	self.number = (self.number:sub(1,1) == '-' and self.number:sub(2) or '-'..self.number)
+end
+function Keypad.c(self) -- 'clear'
+	self.number = "0"
+end
+function Keypad.e(self) -- 'enter'
+	self.enter = true
 	self.activeTime = 1 --ticks
 	self.interactable.active = true
-	self.network:sendToClients("client_playSound","Button on")
-	self.buttonPress = true
 end
-
 
 --- client ---
 
@@ -57,22 +76,24 @@ function Keypad.client_playSound(self, soundName)
 end
 
 function Keypad.client_onCreate(self)
-	self.number = "0"
+	function networkCall(self, parentInstance)
+		parentInstance.network:sendToServer("server_onButtonPress", self.name)
+	end
 	local virtualButtons = {
-		--[[1]] { x = -0.75, y = -0.25, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = obj.number.."1" end},
-		--[[2]] { x = -0.25, y = -0.25, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = obj.number.."2" end},
-		--[[3]] { x =  0.25, y = -0.25, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = obj.number.."3" end},
-		--[[4]] { x = -0.75, y =  0.25, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = obj.number.."4" end},
-		--[[5]] { x = -0.25, y =  0.25, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = obj.number.."5" end},
-		--[[6]] { x =  0.25, y =  0.25, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = obj.number.."6" end},
-		--[[7]] { x = -0.75, y =  0.75, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = obj.number.."7" end},
-		--[[8]] { x = -0.25, y =  0.75, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = obj.number.."8" end},
-		--[[9]] { x =  0.25, y =  0.75, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = obj.number.."9" end},
-		--[[0]] { x = -0.75, y = -0.75, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = obj.number.."0" end},
-		--[[.]] { x = -0.25, y = -0.75, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = (obj.hasDec and obj.number or obj.number..".") obj.hasDec = true end},
-		--[[-]] { x =  0.25, y = -0.75, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = (obj.number:sub(1,1) == '-' and obj.number:sub(2) or '-'..obj.number) end},
-		--[[c]] { x =  0.75, y =  0.50, width = 0.25, height = 0.50, callback = function(self, obj) obj.number = "0" obj.hasDec = false end},
-		--[[e]] { x =  0.75, y = -0.50, width = 0.25, height = 0.50, callback = function(self, obj) obj.enter = true obj.hasDec = false end},
+		{ name = "1", x = -0.75, y = -0.25, width = 0.25, height = 0.25, callback = networkCall},
+		{ name = "2", x = -0.25, y = -0.25, width = 0.25, height = 0.25, callback = networkCall},
+		{ name = "3", x =  0.25, y = -0.25, width = 0.25, height = 0.25, callback = networkCall},
+		{ name = "4", x = -0.75, y =  0.25, width = 0.25, height = 0.25, callback = networkCall},
+		{ name = "5", x = -0.25, y =  0.25, width = 0.25, height = 0.25, callback = networkCall},
+		{ name = "6", x =  0.25, y =  0.25, width = 0.25, height = 0.25, callback = networkCall},
+		{ name = "7", x = -0.75, y =  0.75, width = 0.25, height = 0.25, callback = networkCall},
+		{ name = "8", x = -0.25, y =  0.75, width = 0.25, height = 0.25, callback = networkCall},
+		{ name = "9", x =  0.25, y =  0.75, width = 0.25, height = 0.25, callback = networkCall},
+		{ name = "0", x = -0.75, y = -0.75, width = 0.25, height = 0.25, callback = networkCall},
+		{ name = "d", x = -0.25, y = -0.75, width = 0.25, height = 0.25, callback = networkCall},
+		{ name = "m", x =  0.25, y = -0.75, width = 0.25, height = 0.25, callback = networkCall},
+		{ name = "c", x =  0.75, y =  0.50, width = 0.25, height = 0.50, callback = networkCall},
+		{ name = "e", x =  0.75, y = -0.50, width = 0.25, height = 0.50, callback = networkCall},
 	}
 	sm.virtualButtons.client_configure(self, virtualButtons)
 	self.effect = sm.effect.createEffect( "RadarDot", self.interactable)
@@ -103,14 +124,19 @@ function Keypad.client_onFixedUpdate(self)
 	end
 end
 
-function Keypad.client_stopEffect(self)
-	self.effect:setOffsetPosition(sm.vec3.new(100000,0,0))
-	self.effect2:setOffsetPosition(sm.vec3.new(100000,0,0))
-	if self.effect:isPlaying() then
-		self.effect:stop()
-		self.effect2:stop()
-	end
+-- Called on pressing [E]
+function Keypad.client_onInteract( self ) 
+	local hit, hitResult = sm.localPlayer.getRaycast(10) -- world point the vector hit
+	if not hit then return end
+	local dotX, dotY = self:getLocalXY(hitResult.pointWorld)
+	
+	sm.virtualButtons.client_onInteract(self, dotX, dotY)
 end
+
+function Keypad.client_onDestroy(self)
+	self:client_stopEffect()
+end
+
 
 function Keypad.getLocalXY(self, vec)
 	local hitVec = vec - self.shape.worldPosition
@@ -121,26 +147,12 @@ function Keypad.getLocalXY(self, vec)
 	return dotX, dotY
 end
 
--- Called on pressing [E]
-function Keypad.client_onInteract( self ) 
-	local hit, hitResult = sm.localPlayer.getRaycast(10) -- world point the vector hit
-	if not hit then return end
-	local dotX, dotY = self:getLocalXY(hitResult.pointWorld)
-	
-	self.number = (self.enter and "0" or self.number)
-	self.enter = false
-	
-	sm.virtualButtons.client_onInteract(self, dotX, dotY)
-	
-	if self.enter then
-		self.network:sendToServer("server_changeActive")
-	else
-		--print('notify server, number = ',tonumber(self.number))
-		self.network:sendToServer("server_changePower", tonumber(self.number))
+
+function Keypad.client_stopEffect(self)
+	self.effect:setOffsetPosition(sm.vec3.new(100000,0,0))
+	self.effect2:setOffsetPosition(sm.vec3.new(100000,0,0))
+	if self.effect:isPlaying() then
+		self.effect:stop()
+		self.effect2:stop()
 	end
 end
-
-function Keypad.client_onDestroy(self)
-	self:client_stopEffect()
-end
-
