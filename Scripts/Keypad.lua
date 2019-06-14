@@ -12,7 +12,7 @@ dofile "functions.lua"
 -- Called on creation
 function Keypad.server_onCreate( self )
 	self.activeTime = 0
-	self.strNumber = 0
+	self.strNumber = "0"
 end
 function Keypad.server_onRefresh( self )
 	if not sm.exists(self.interactable) then return end
@@ -133,6 +133,10 @@ function Keypad.client_onInteract( self )
 	local dotX, dotY = self:getLocalXY(hitResult.pointWorld)
 	
 	sm.virtualButtons.client_onInteract(self, dotX, dotY)
+end
+
+function Keypad.client_canInteract(self)
+	return (self.shape.worldPosition - sm.localPlayer.getPosition()):length()<2
 end
 
 function Keypad.client_onDestroy(self)
