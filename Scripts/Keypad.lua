@@ -14,6 +14,7 @@ function Keypad.server_onCreate( self )
 	self.activeTime = 0
 end
 function Keypad.server_onRefresh( self )
+	if not sm.exists(self.interactable) then return end
     self:server_onCreate()
 	self.interactable.power = 0
 	self.interactable.active = false
@@ -68,10 +69,10 @@ function Keypad.client_onCreate(self)
 		--[[8]] { x = -0.25, y =  0.75, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = obj.number.."8" end},
 		--[[9]] { x =  0.25, y =  0.75, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = obj.number.."9" end},
 		--[[0]] { x = -0.75, y = -0.75, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = obj.number.."0" end},
-		--[[.]] { x = -0.25, y = -0.75, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = obj.number.."." end},
+		--[[.]] { x = -0.25, y = -0.75, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = (obj.hasDec and obj.number or obj.number..".") obj.hasDec = true end},
 		--[[-]] { x =  0.25, y = -0.75, width = 0.25, height = 0.25, callback = function(self, obj) obj.number = (obj.number:sub(1,1) == '-' and obj.number:sub(2) or '-'..obj.number) end},
-		--[[c]] { x =  0.75, y =  0.50, width = 0.25, height = 0.50, callback = function(self, obj) obj.number = "0" end}, 
-		--[[e]] { x =  0.75, y = -0.50, width = 0.25, height = 0.50, callback = function(self, obj) obj.enter = true end},
+		--[[c]] { x =  0.75, y =  0.50, width = 0.25, height = 0.50, callback = function(self, obj) obj.number = "0" obj.hasDec = false end},
+		--[[e]] { x =  0.75, y = -0.50, width = 0.25, height = 0.50, callback = function(self, obj) obj.enter = true obj.hasDec = false end},
 	}
 	sm.virtualButtons.client_configure(self, virtualButtons)
 	self.effect = sm.effect.createEffect( "RadarDot", self.interactable)
