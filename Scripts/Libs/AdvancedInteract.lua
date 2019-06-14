@@ -1,7 +1,7 @@
 -- Libs/AdvancedInteract.lua --
 -- This library was made by Nick
 
-print("Libs/AdvancedInteract.lua reloaded")
+--print("Libs/AdvancedInteract.lua reloaded")
 
 if not sm.advancedInteract then
     sm.advancedInteract = {}
