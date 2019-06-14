@@ -12,6 +12,7 @@ dofile "functions.lua"
 -- Called on creation
 function Keypad.server_onCreate( self )
 	self.activeTime = 0
+	self.strNumber = 0
 end
 function Keypad.server_onRefresh( self )
 	if not sm.exists(self.interactable) then return end
@@ -36,32 +37,33 @@ function Keypad.server_onFixedUpdate( self, dt )
 end
 
 function Keypad.server_onButtonPress(self, buttonName)
-	self.network:sendToClients("client_playSound","Button on")
-	self.buttonPress = true
-	-- if enter was pressed last buttonpress, reset just before this buttonpress:
-	if self.enter then
-		self.number = "0"
+	if self.enter and buttonName ~= "e" then
+		-- can press 'enter' multiple times
+		self.strNumber = "0"
 		self.enter = false
 	end
 	
 	if tonumber(buttonName) then
-		self.number = self.number..buttonName
+		self.strNumber = self.strNumber..buttonName
 	else
 		self[buttonName](self)
 	end
 	
-	self.interactable.power = tonumber(self.number)
-	sm.interactable.setValue(self.interactable, tonumber(self.number))
+	self.interactable.power = tonumber(self.strNumber)
+	sm.interactable.setValue(self.interactable, tonumber(self.strNumber))
+	
+	self.buttonPress = true
+	self.network:sendToClients("client_playSound","Button on")
 end
 
 function Keypad.d(self) -- '.'
-	self.number = (self.number:find("%.") and self.number or self.number..".")
+	self.strNumber = (self.strNumber:find("%.") and self.strNumber or self.strNumber..".")
 end
 function Keypad.m(self) -- '-'
-	self.number = (self.number:sub(1,1) == '-' and self.number:sub(2) or '-'..self.number)
+	self.strNumber = (self.strNumber:sub(1,1) == '-' and self.strNumber:sub(2) or '-'..self.strNumber)
 end
 function Keypad.c(self) -- 'clear'
-	self.number = "0"
+	self.strNumber = "0"
 end
 function Keypad.e(self) -- 'enter'
 	self.enter = true
