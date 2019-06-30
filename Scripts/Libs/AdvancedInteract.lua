@@ -26,7 +26,23 @@ function sm.advancedInteract.create( parentClass )
         btn.onHover = onHover
         btn.active = active and true
         
+        function btn.destroy( self )
+            if self.effect then
+                self.effect:stop()
+            end
+        end
+        
+        if btn.effectName then
+            btn.effect = sm.effect.createEffect(btn.effectName, self.parentClass.interactable)
+        end
+        
         self.buttons[btn.name] = btn
+    end
+    
+    function object.destroy( self )
+        for name, btn in pairs(self.buttons) do
+            btn:destroy()
+        end
     end
     
     function object.getRaycastPoint( self )

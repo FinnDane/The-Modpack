@@ -18,7 +18,7 @@ end
 
 function Keypad.client_onCreate( self )
     self.advInteract = sm.advancedInteract.create(self)
-    self.advInteract:addButton("0",   -1,   -1, 0.5, 0.5, nil, self.client_onKeypadNumber, nil)
+    self.advInteract:addButton("0",   -1,   -1, 0.5, 0.5, "Keypad - OutlineSmall", self.client_onKeypadNumber, nil)
     self.advInteract:addButton("1",   -1, -0.5, 0.5, 0.5, nil, self.client_onKeypadNumber, nil)
     self.advInteract:addButton("2", -0.5, -0.5, 0.5, 0.5, nil, self.client_onKeypadNumber, nil)
     self.advInteract:addButton("3",    0, -0.5, 0.5, 0.5, nil, self.client_onKeypadNumber, nil)
@@ -35,9 +35,27 @@ function Keypad.client_onCreate( self )
     self.advInteract:addButton("c",  0.5,    0, 0.5,   1, nil, self.client_onKeypadClear , nil)
 end
 
+function Keypad.client_onDestroy( self )
+    self.advInteract:destroy()
+end
+
 function Keypad.client_onInteract( self )
     self.advInteract:onInteract()
 end
+
+function Keypad.client_onUpdate( self, dt )
+    
+end
+
+function Keypad.client_onFixedUpdate( self, timeStep )
+    print(sm.localPlayer.getPlayer().character.velocity:length())
+end
+
+function createParticle(position, color)
+    sm.particle.createParticle( "paint_smoke", position, nil, color )
+end
+
+
 
 
 -- Client keystrokes

@@ -1,0 +1,19 @@
+{
+    "Keypad - OutlineSmall":
+	{
+		"parameterList":
+		{
+			"minColor":[0.0, 0.0, 1.0, 0.0], 
+			"maxColor":[0.4, 0.4, 1.0, 0.7]
+		},
+		"effectList":
+		[
+			{
+				"type": "renderable",
+				"name": "$MOD_DATA/Effects/Renderables/keypad_outlinesmall.rend",
+				"offset": { "x": 0.0, "y": 0.0, "z": 0.0 },
+				"parameters" : [ "minColor", "maxColor" ]
+			}
+		]
+	}
+}
