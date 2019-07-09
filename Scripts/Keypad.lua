@@ -47,10 +47,6 @@ function Keypad.client_onUpdate( self, dt )
     
 end
 
-function Keypad.client_onFixedUpdate( self, timeStep )
-    print(sm.localPlayer.getPlayer().character.velocity:length())
-end
-
 function createParticle(position, color)
     sm.particle.createParticle( "paint_smoke", position, nil, color )
 end
